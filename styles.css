@@ -1,4 +1,5 @@
 :root {
+    
   color-scheme: light;
   --bg: #f4f7ff;
   --surface: #ffffff;
@@ -393,6 +394,95 @@ textarea {
 .stack-list {
   display: grid;
   gap: 10px;
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kanban-column {
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 10px;
+  min-height: 180px;
+  border: 2px solid var(--border);
+}
+
+.kanban-column h4 {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+}
+
+.kanban-column[data-status="backlog"] {
+  border-color: #9ca3af;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+}
+
+.kanban-column[data-status="backlog"] h4 {
+  color: #6b7280;
+}
+
+body.dark-theme .kanban-column[data-status="backlog"] {
+  background: linear-gradient(135deg, #1f2937, #374151);
+  border-color: #4b5563;
+}
+
+body.dark-theme .kanban-column[data-status="backlog"] h4 {
+  color: #d1d5db;
+}
+
+.kanban-column[data-status="ongoing"] {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+}
+
+.kanban-column[data-status="ongoing"] h4 {
+  color: #b45309;
+}
+
+body.dark-theme .kanban-column[data-status="ongoing"] {
+  background: linear-gradient(135deg, #78350f, #92400e);
+  border-color: #d97706;
+}
+
+body.dark-theme .kanban-column[data-status="ongoing"] h4 {
+  color: #fcd34d;
+}
+
+.kanban-column[data-status="done"] {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+}
+
+.kanban-column[data-status="done"] h4 {
+  color: #065f46;
+}
+
+body.dark-theme .kanban-column[data-status="done"] {
+  background: linear-gradient(135deg, #064e3b, #047857);
+  border-color: #10b981;
+}
+
+body.dark-theme .kanban-column[data-status="done"] h4 {
+  color: #6ee7b7;
+}
+
+.kanban-card {
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.kanban-card.done {
+  opacity: 0.7;
+}
+
+.task-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 4px;
 }
 
 .list-item {

@@ -49,85 +49,54 @@ function createDefaultState() {
   return normalizeState(defaultState);
 }
 
-function getTaskStatus(task) {
-  return task.status || (task.done ? 'done' : 'backlog');
-}
-
-function getAllTasksForKanban() {
-  return state.tasks || [];
-}
-
-function getFilteredTasks() {
-  const searchText = (kanbanTaskSearch.value || '').toLowerCase();
-  const filterStatus = kanbanTaskFilter.value;
-  const tasks = getAllTasksForKanban();
-  return tasks.filter((task) => {
-    const matchSearch = !searchText || task.title.toLowerCase().includes(searchText);
-    const matchFilter = filterStatus === 'all' || (filterStatus === 'pending' && !task.done) || (filterStatus === 'done' && task.done);
-    return matchSearch && matchFilter;
-  });
-}
-
-function getWeekStart(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff));
-}
-
-function getAttachmentLink(filename) {
-  return `<a href="${ATTACHMENT_DIR}/${filename}" target="_blank" class="attachment-link">📎 ${filename}</a>`;
-}
-
-let users = [];
-let activeUserId = null;
-let state = createDefaultState();
-
 function loadUsers() {
-  const stored = localStorage.getItem(USER_STORE_KEY);
-  users = stored ? JSON.parse(stored) : [];
+  const saved = localStorage.getItem(USER_STORE_KEY);
+  if (!saved) {
+    const demoUser = {
+      id: crypto.randomUUID(),
+      name: 'Demo Tim',
+      email: 'demo@syncup.id',
+      password: '123456'
+    };
+    localStorage.setItem(USER_STORE_KEY, JSON.stringify([demoUser]));
+    return [demoUser];
+  }
+  return JSON.parse(saved);
 }
 
 function saveUsers() {
   localStorage.setItem(USER_STORE_KEY, JSON.stringify(users));
 }
 
+function loadWorkspaceState() {
+  const saved = localStorage.getItem(WORKSPACE_KEY);
+  return saved ? normalizeState(JSON.parse(saved)) : createDefaultState();
+}
+
+function saveWorkspaceState() {
+  localStorage.setItem(WORKSPACE_KEY, JSON.stringify(state));
+}
+
 function getCurrentUser() {
   return users.find((user) => user.id === activeUserId) || null;
 }
 
-function loadWorkspaceState() {
-  const user = getCurrentUser();
-  if (!user) return createDefaultState();
-  const normalized = normalizeState(user);
-  return {
-    members: normalized.members || [],
-    events: normalized.events || [],
-    notes: normalized.notes || [],
-    tasks: normalized.tasks || []
-  };
-}
+let users = loadUsers();
+let activeUserId = localStorage.getItem(ACTIVE_USER_KEY);
+let state = loadWorkspaceState();
 
-function saveWorkspaceState() {
-  const user = getCurrentUser();
-  if (!user) return;
-  users = users.map((u) => (u.id === activeUserId ? { ...u, ...state } : u));
-  saveUsers();
-}
-
-activeUserId = localStorage.getItem(ACTIVE_USER_KEY);
-loadUsers();
-if (activeUserId && getCurrentUser()) {
-  state = loadWorkspaceState();
-}
-
-// DOM Elements
 const authScreen = document.getElementById('authScreen');
 const appShell = document.getElementById('appShell');
 const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');
 const authMessage = document.getElementById('authMessage');
 const authTabs = document.querySelectorAll('.auth-tab');
+const form = document.getElementById('itemForm');
+const backlogList = document.getElementById('backlogList');
+const ongoingList = document.getElementById('ongoingList');
+const doneList = document.getElementById('doneList');
+const eventsList = document.getElementById('eventsList');
+const notesList = document.getElementById('notesList');
 const todayCount = document.getElementById('todayCount');
 const doneCount = document.getElementById('doneCount');
 const memberCount = document.getElementById('memberCount');
@@ -141,8 +110,6 @@ const weekEvents = document.getElementById('weekEvents');
 const activeNotes = document.getElementById('activeNotes');
 const deadlineList = document.getElementById('deadlineList');
 const exportBtn = document.getElementById('exportBtn');
-
-// Main Form Elements
 const form = document.getElementById('itemForm');
 const assigneeSelect = document.getElementById('assignee');
 const attachmentInput = document.getElementById('attachment');
@@ -183,7 +150,21 @@ const pages = document.querySelectorAll('.page');
 
 const ATTACHMENT_DIR = 'uploads';
 
-// Navigation Functions
+function showAuthMessage(message, isError = false) {
+  authMessage.textContent = message;
+  authMessage.style.color = isError ? '#dc2626' : '#3861fb';
+}
+
+function updateAuthView() {
+  const loggedIn = Boolean(activeUserId && getCurrentUser());
+  authScreen.classList.toggle('hidden', loggedIn);
+  appShell.classList.toggle('hidden', !loggedIn);
+
+  if (loggedIn) {
+    currentUserName.textContent = getCurrentUser().name;
+  }
+}
+
 function navigateToPage(pageName) {
   pages.forEach(page => page.classList.add('hidden'));
   const targetPage = document.getElementById(pageName + 'Page');
@@ -204,132 +185,19 @@ function navigateToPage(pageName) {
   }
 }
 
-// Setup Navigation
-navLinks.forEach(link => {
-  link.addEventListener('click', () => {
-    const pageName = link.dataset.page;
-    navigateToPage(pageName);
-  });
-});
-
-function showAuthMessage(message, isError = false) {
-  authMessage.textContent = message;
-  authMessage.style.color = isError ? '#dc2626' : '#3861fb';
-}
-
-function updateAuthView() {
-  const loggedIn = Boolean(activeUserId && getCurrentUser());
-  authScreen.classList.toggle('hidden', loggedIn);
-  appShell.classList.toggle('hidden', !loggedIn);
-
-  if (loggedIn) {
-    currentUserName.textContent = getCurrentUser().name;
-  }
-}
-
 function resetState() {
   state = loadWorkspaceState();
 }
 
-// Render Functions
 function render() {
   renderStats();
   renderDeadlines();
   renderNotes();
   renderMembers();
 }
-
-function renderStats() {
-  const todayDate = new Date().toISOString().split('T')[0];
-  const todayEvents = state.events.filter((event) => event.date === todayDate).length;
-  const completedTasks = state.tasks.filter((task) => task.done).length;
-  const allMembers = state.members || [];
-
-  todayCount.textContent = todayEvents;
-  doneCount.textContent = completedTasks;
-  memberCount.textContent = allMembers.length;
-
-  const total = state.tasks.length;
-  const rate = total === 0 ? '0' : Math.round((completedTasks / total) * 100);
-  completionRate.textContent = `${rate}%`;
-
-  const currentWeekStart = getWeekStart(new Date());
-  const weekEventsCount = state.events.filter((event) => {
-    const eventDate = new Date(event.date);
-    return eventDate >= currentWeekStart && eventDate <= new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-  }).length;
-  weekEvents.textContent = weekEventsCount;
-
-  progressBar.style.width = `${rate}%`;
-  progressBar.textContent = `${rate}%`;
-  progressText.textContent = `${completedTasks} dari ${total} tugas selesai, fokus utama: ${state.tasks.find((task) => !task.done)?.title || 'Semua selesai'}`;
-
-  activeNotes.textContent = state.notes?.length || 0;
-}
-
-function renderDeadlines() {
-  deadlineList.innerHTML = '';
-  const tasks = state.tasks.filter((task) => !task.done).sort((a, b) => new Date(a.date) - new Date(b.date));
-  const top3 = tasks.slice(0, 3);
-
-  top3.forEach((task) => {
-    const taskDate = new Date(task.date);
-    const today = new Date();
-    const diff = Math.ceil((taskDate - today) / (1000 * 60 * 60 * 24));
-    const div = document.createElement('div');
-    div.className = 'deadline-item';
-    div.innerHTML = `
-      <strong>${task.title}</strong>
-      <small>${diff} hari - ${task.date}</small>
-    `;
-    deadlineList.appendChild(div);
-  });
-
-  if (top3.length === 0) {
-    deadlineList.innerHTML = '<p>Tidak ada deadline mendekati.</p>';
-  }
-}
-
-function renderNotes() {
-  const membersList = document.getElementById('membersList');
-  if (!membersList) return;
-  membersList.innerHTML = '';
-  const members = state.members || [];
-  if (members.length === 0) {
-    membersList.innerHTML = '<p>Belum ada anggota tim.</p>';
-    return;
-  }
-
-  members.forEach((member) => {
-    const card = document.createElement('div');
-    card.className = 'member-card';
-    card.innerHTML = `
-      <strong>${member.name}</strong>
-      <div>${member.role}</div>
-    `;
-    membersList.appendChild(card);
-  });
-}
-
-function renderMembers() {
-  const membersList = document.getElementById('membersList');
-  if (!membersList) return;
-  membersList.innerHTML = '';
-  const members = state.members || [];
-  if (members.length === 0) {
-    membersList.innerHTML = '<p>Belum ada anggota tim.</p>';
-    return;
-  }
-
-  members.forEach((member) => {
-    const card = document.createElement('div');
-    card.className = 'member-card';
-    card.innerHTML = `
-      <strong>${member.name}</strong>
-      <div>${member.role}</div>
-    `;
-    membersList.appendChild(card);
-  });
+  renderEvents();
+  renderNotes();
+  renderMembers();
 }
 
 function renderKanbanPage() {
@@ -389,7 +257,16 @@ function renderAgendaEvents() {
 }
 
 function renderKanbanTasks() {
-  const filtered = getFilteredTasks();
+  const searchText = (kanbanTaskSearch.value || '').toLowerCase();
+  const filterStatus = kanbanTaskFilter.value;
+  const tasks = state.tasks || [];
+  
+  const filtered = tasks.filter((task) => {
+    const matchSearch = !searchText || task.title.toLowerCase().includes(searchText);
+    const matchFilter = filterStatus === 'all' || (filterStatus === 'pending' && !task.done) || (filterStatus === 'done' && task.done);
+    return matchSearch && matchFilter;
+  });
+  
   const backlogTasks = filtered.filter((task) => getTaskStatus(task) === 'backlog');
   const ongoingTasks = filtered.filter((task) => getTaskStatus(task) === 'ongoing');
   const doneTasks = filtered.filter((task) => getTaskStatus(task) === 'done');
@@ -432,30 +309,222 @@ function renderKanbanColumn(targetList, tasks) {
     targetList.appendChild(item);
   });
 }
+  populateAssigneeOptions();
+}
+
+function renderDeadlines() {
+  const now = new Date();
+  const upcoming = state.tasks
+    .filter((task) => !task.done && task.date)
+    .map((task) => {
+      const dueDate = new Date(task.date);
+      const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+      return { ...task, diffDays };
+    })
+    .filter((task) => task.diffDays >= 0)
+    .sort((a, b) => a.diffDays - b.diffDays)
+    .slice(0, 3);
+
+  deadlineList.innerHTML = '';
+
+  if (!upcoming.length) {
+    deadlineList.innerHTML = '<p>Belum ada deadline yang mendekati.</p>';
+    return;
+  }
+
+  upcoming.forEach((task) => {
+    const item = document.createElement('div');
+    item.className = `deadline-item ${task.diffDays <= 2 ? 'urgent' : ''}`;
+    item.innerHTML = `
+      <div>
+        <strong>${task.title}</strong>
+        <small>${task.date} • ${task.priority}</small>
+      </div>
+      <span>${task.diffDays === 0 ? 'Hari ini' : `${task.diffDays} hari`}</span>
+    `;
+    deadlineList.appendChild(item);
+  });
+}
+
+function renderStats() {
+  const today = new Date().toISOString().split('T')[0];
+  const todayEvents = state.events.filter((event) => event.date === today).length;
+  const completedTasks = state.tasks.filter((task) => task.done).length;
+  const progress = state.tasks.length ? Math.round((completedTasks / state.tasks.length) * 100) : 0;
+  const todayDate = new Date();
+  const weekStart = new Date(todayDate);
+  weekStart.setDate(todayDate.getDate() - todayDate.getDay());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  const weekEventsCount = state.events.filter((event) => {
+    const eventDate = new Date(event.date);
+    return eventDate >= weekStart && eventDate <= weekEnd;
+  }).length;
+
+  todayCount.textContent = todayEvents;
+  doneCount.textContent = `${completedTasks}/${state.tasks.length}`;
+  memberCount.textContent = state.members?.length || 0;
+  progressBar.textContent = `${progress}%`;
+  progressText.textContent = `${completedTasks} dari ${state.tasks.length} tugas selesai, fokus utama: ${state.tasks.find((task) => !task.done)?.title || 'Semua selesai'}`;
+  completionRate.textContent = `${progress}%`;
+  weekEvents.textContent = weekEventsCount;
+  activeNotes.textContent = state.notes?.length || 0;
+}
+
+function getFilteredTasks() {
+  const search = taskSearch.value.trim().toLowerCase();
+  const filter = taskFilter.value;
+
+  return state.tasks.filter((task) => {
+    const matchesSearch = !search || task.title.toLowerCase().includes(search) || task.note.toLowerCase().includes(search);
+    const matchesFilter = filter === 'all' || (filter === 'pending' && !task.done) || (filter === 'done' && task.done);
+    return matchesSearch && matchesFilter;
+  });
+}
+
+function getAllTasksForKanban() {
+  return state.tasks || [];
+}
+
+function getAttachmentLink(attachment) {
+  if (!attachment) return '';
+  return `<div>Lampiran: <a href="/${ATTACHMENT_DIR}/${attachment}" target="_blank" rel="noreferrer">${attachment}</a></div>`;
+}
+
+function getTaskStatus(task) {
+  return task.status || (task.done ? 'done' : 'backlog');
+}
+
+function renderTasks() {
+  backlogList.innerHTML = '';
+  ongoingList.innerHTML = '';
+  doneList.innerHTML = '';
+
+  const allTasks = getAllTasksForKanban();
+  const backlogTasks = allTasks.filter(t => getTaskStatus(t) === 'backlog');
+  const ongoingTasks = allTasks.filter(t => getTaskStatus(t) === 'ongoing');
+  const doneTasks = allTasks.filter(t => getTaskStatus(t) === 'done');
+
+  if (!allTasks.length) {
+    backlogList.innerHTML = '<p>Tidak ada tugas</p>';
+    ongoingList.innerHTML = '<p>Tidak ada tugas</p>';
+    doneList.innerHTML = '<p>Tidak ada tugas</p>';
+    return;
+  }
+
+  const renderTaskToColumn = (tasks, targetList) => {
+    if (!tasks.length) {
+      targetList.innerHTML = '<p>Kosong</p>';
+      return;
+    }
+
+    tasks.forEach((task) => {
+      const item = document.createElement('div');
+      item.className = `list-item kanban-card ${task.done ? 'done' : ''}`;
+      item.draggable = true;
+      item.dataset.taskId = task.id;
+      const priorityColor = task.priority === 'Tinggi' ? '#ef4444' : task.priority === 'Sedang' ? '#f59e0b' : '#10b981';
+      item.innerHTML = `
+        <div>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
+            <strong>${task.title}</strong>
+            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:${priorityColor}; flex-shrink:0;" title="${task.priority}"></span>
+          </div>
+          <div class="task-meta">${task.date} • ${task.priority}</div>
+          <small>${task.note}</small>
+          <div>👤 ${task.assignee || 'Belum ditugaskan'}</div>
+          ${task.attachment ? getAttachmentLink(task.attachment) : ''}
+        </div>
+        <div style="display:flex; gap:6px; flex-direction:column; align-items:stretch;">
+          ${getTaskStatus(task) !== 'done' ? `<button class="badge" data-action="move-done" data-id="${task.id}" style="width:100%;background:#10b981;color:white;">✓ Selesai</button>` : ''}
+          <button class="badge" data-action="toggle-task" data-id="${task.id}" style="width:100%;">${task.done ? '✓ Selesai' : '⭐ Pending'}</button>
+          <button class="badge" data-action="delete-task" data-id="${task.id}" style="width:100%;background:#fee;color:#c00;">Hapus</button>
+        </div>
+      `;
+      targetList.appendChild(item);
+    });
+  };
+
+  renderTaskToColumn(backlogTasks, backlogList);
+  renderTaskToColumn(ongoingTasks, ongoingList);
+  renderTaskToColumn(doneTasks, doneList);
+}
+
+function renderEvents() {
+  eventsList.innerHTML = '';
+  const selectedDate = calendarDate.value;
+  const selectedPriority = priorityFilter.value;
+  const filteredEvents = state.events.filter((event) => {
+    const matchesDate = !selectedDate || event.date === selectedDate;
+    const matchesPriority = selectedPriority === 'all' || event.priority === selectedPriority;
+    return matchesDate && matchesPriority;
+  });
+
+  if (!filteredEvents.length) {
+    eventsList.innerHTML = '<p>Belum ada agenda sesuai filter.</p>';
+    return;
+  }
+
+  filteredEvents.forEach((event) => {
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    item.innerHTML = `
+      <div>
+        <strong>${event.title}</strong>
+        <div>${event.date} • ${event.priority}</div>
+        <small>${event.note}</small>
+      </div>
+      <button class="badge" data-action="delete-event" data-id="${event.id}">Hapus</button>
+    `;
+    eventsList.appendChild(item);
+  });
+}
+
+function renderNotes() {
+  notesList.innerHTML = '';
+
+  state.notes.forEach((note, index) => {
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    card.innerHTML = `
+      <span>${note}</span>
+      <button data-action="delete-note" data-index="${index}">Hapus</button>
+    `;
+    notesList.appendChild(card);
+  });
+}
+
+function renderMembers() {
+  membersList.innerHTML = '';
+
+  if (!state.members?.length) {
+    membersList.innerHTML = '<p>Belum ada anggota tim.</p>';
+    return;
+  }
+
+  state.members.forEach((member) => {
+    const card = document.createElement('div');
+    card.className = 'member-card';
+    card.innerHTML = `
+      <strong>${member.name}</strong>
+      <div>${member.role}</div>
+    `;
+    membersList.appendChild(card);
+  });
+}
 
 function populateAssigneeOptions() {
   assigneeSelect.innerHTML = '';
-  kanbanAssigneeInput.innerHTML = '';
   const defaultOption = document.createElement('option');
   defaultOption.value = 'Semua';
   defaultOption.textContent = 'Semua';
   assigneeSelect.appendChild(defaultOption);
-  
-  const defaultOption2 = document.createElement('option');
-  defaultOption2.value = '';
-  defaultOption2.textContent = 'Pilih anggota';
-  kanbanAssigneeInput.appendChild(defaultOption2);
 
   (state.members || []).forEach((member) => {
     const option = document.createElement('option');
     option.value = member.name;
     option.textContent = member.name;
     assigneeSelect.appendChild(option);
-    
-    const option2 = document.createElement('option');
-    option2.value = member.name;
-    option2.textContent = member.name;
-    kanbanAssigneeInput.appendChild(option2);
   });
 }
 
@@ -501,7 +570,6 @@ function saveState() {
   void persistWorkspace();
 }
 
-// Event Listeners - Auth
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
@@ -523,7 +591,6 @@ loginForm.addEventListener('submit', async (event) => {
   state = loadWorkspaceState();
   await persistWorkspace();
   updateAuthView();
-  populateAssigneeOptions();
   render();
   loginForm.reset();
   showAuthMessage('Berhasil masuk ke workspace.');
@@ -566,7 +633,6 @@ registerForm.addEventListener('submit', async (event) => {
   state = loadWorkspaceState();
   await persistWorkspace();
   updateAuthView();
-  populateAssigneeOptions();
   render();
   registerForm.reset();
   showAuthMessage(`Akun ${name} berhasil dibuat.`);
@@ -582,7 +648,6 @@ authTabs.forEach((tab) => {
   });
 });
 
-// Event Listeners - Dashboard Form
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -600,10 +665,10 @@ form.addEventListener('submit', async (event) => {
     attachmentName = result.filename || '';
   }
 
-  const type = document.getElementById('type').value;
   const payload = {
     id: crypto.randomUUID(),
     title: document.getElementById('title').value.trim(),
+    type: document.getElementById('type').value,
     date: document.getElementById('date').value,
     priority: document.getElementById('priority').value,
     assignee: assigneeSelect.value,
@@ -616,7 +681,7 @@ form.addEventListener('submit', async (event) => {
     return;
   }
 
-  if (type === 'task') {
+  if (payload.type === 'task') {
     state.tasks.unshift({ ...payload, done: false });
   } else {
     state.events.unshift({ ...payload });
@@ -627,91 +692,6 @@ form.addEventListener('submit', async (event) => {
   form.reset();
 });
 
-// Event Listeners - Agenda Page Form
-agendaForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const title = agendaTitleInput.value.trim();
-  const date = agendaDateInput.value;
-  const priority = agendaPriorityInput.value;
-  const note = agendaNoteInput.value.trim();
-
-  if (!title || !date) return;
-
-  state.events.unshift({
-    id: crypto.randomUUID(),
-    title,
-    date,
-    priority,
-    note
-  });
-
-  saveState();
-  agendaForm.reset();
-  renderAgendaPage();
-});
-
-// Event Listeners - Kanban Page Form
-kanbanTaskForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-
-  const file = kanbanAttachmentInput.files && kanbanAttachmentInput.files[0] ? kanbanAttachmentInput.files[0] : null;
-  let attachmentName = '';
-
-  if (file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const result = await response.json();
-    attachmentName = result.filename || '';
-  }
-
-  const title = kanbanTitleInput.value.trim();
-  const date = kanbanDateInput.value;
-  const priority = kanbanPriorityInput.value;
-  const assignee = kanbanAssigneeInput.value;
-  const note = kanbanNoteInput.value.trim();
-
-  if (!title || !date) return;
-
-  state.tasks.unshift({
-    id: crypto.randomUUID(),
-    title,
-    date,
-    priority,
-    assignee,
-    attachment: attachmentName,
-    note,
-    done: false,
-    status: 'backlog'
-  });
-
-  saveState();
-  kanbanTaskForm.reset();
-  renderKanbanPage();
-});
-
-// Event Listeners - Notes Page Form
-notesPageForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const value = notesPageInput.value.trim();
-  if (!value) return;
-
-  state.notes.unshift(value);
-  notesPageInput.value = '';
-  saveState();
-  renderNotesPage();
-});
-
-// Event Listeners - Search & Filter
-kanbanTaskSearch.addEventListener('input', renderKanbanPage);
-kanbanTaskFilter.addEventListener('change', renderKanbanPage);
-agendaCalendarDate.addEventListener('change', renderAgendaPage);
-agendaPriorityFilter.addEventListener('change', renderAgendaPage);
-
-// Event Listeners - Theme & Logout
 exportBtn.addEventListener('click', () => {
   const content = [
     'SyncUp Workspace Export',
@@ -735,6 +715,40 @@ exportBtn.addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
+toggleForm.addEventListener('click', () => {
+  document.getElementById('title').focus();
+});
+
+taskSearch.addEventListener('input', renderTasks);
+taskFilter.addEventListener('change', renderTasks);
+calendarDate.addEventListener('change', renderEvents);
+priorityFilter.addEventListener('change', renderEvents);
+
+noteForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const value = noteInput.value.trim();
+  if (!value) return;
+
+  state.notes.unshift(value);
+  noteInput.value = '';
+  saveState();
+  renderNotes();
+});
+
+memberForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const name = memberNameInput.value.trim();
+  const role = memberRoleInput.value.trim();
+
+  if (!name || !role) return;
+
+  state.members.push({ id: crypto.randomUUID(), name, role });
+  memberNameInput.value = '';
+  memberRoleInput.value = '';
+  saveState();
+  render();
+});
+
 logoutBtn.addEventListener('click', async () => {
   localStorage.removeItem(ACTIVE_USER_KEY);
   activeUserId = null;
@@ -751,7 +765,6 @@ themeToggle.addEventListener('click', () => {
   localStorage.setItem('syncup-theme', isDark ? 'dark' : 'light');
 });
 
-// Event Listeners - Drag & Drop
 document.addEventListener('dragstart', (event) => {
   const item = event.target.closest('.list-item');
   if (!item) return;
@@ -771,20 +784,20 @@ document.addEventListener('drop', (event) => {
   event.preventDefault();
 
   const status = column.dataset.status;
+  const nextStatus = status === 'done' ? 'done' : status === 'ongoing' ? 'ongoing' : 'backlog';
   state.tasks = state.tasks.map((task) => {
     if (task.id !== taskId) return task;
     return {
       ...task,
-      done: status === 'done',
-      status
+      done: nextStatus === 'done',
+      status: nextStatus
     };
   });
 
   saveState();
-  renderKanbanPage();
+  render();
 });
 
-// Event Listeners - Dynamic Actions
 document.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
@@ -828,34 +841,26 @@ document.addEventListener('click', (event) => {
   }
 
   if (action === 'delete-note') {
-    if (index === undefined) return;
-    state.notes.splice(index, 1);
-  }
-
-  if (action === 'delete-member') {
-    if (!id) return;
-    state.members = state.members.filter((member) => member.id !== id);
+    const noteIndex = Number(index);
+    if (Number.isNaN(noteIndex)) return;
+    state.notes.splice(noteIndex, 1);
   }
 
   saveState();
   render();
-  renderKanbanPage();
-  renderAgendaPage();
-  renderNotesPage();
 });
 
-// Initialize
-void (async () => {
+async function initializeApp() {
   await loadRemoteWorkspace();
-  updateAuthView();
-  populateAssigneeOptions();
-  if (activeUserId) {
-    render();
-  }
-  
   const savedTheme = localStorage.getItem('syncup-theme');
   if (savedTheme === 'dark') {
     document.body.classList.add('dark-theme');
     themeToggle.textContent = '☀️ Terang';
   }
-})();
+  const today = new Date().toISOString().split('T')[0];
+  calendarDate.value = today;
+  updateAuthView();
+  render();
+}
+
+initializeApp();

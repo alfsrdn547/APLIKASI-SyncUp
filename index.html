@@ -222,7 +222,7 @@
 
           <div class="panel">
             <div class="panel-header">
-              <h3>Daftar tugas</h3>
+              <h3>Kanban tugas</h3>
             </div>
             <div class="task-toolbar">
               <input id="taskSearch" type="text" placeholder="Cari tugas" />
@@ -232,7 +232,20 @@
                 <option value="done">Selesai</option>
               </select>
             </div>
-            <div id="tasksList" class="stack-list"></div>
+            <div class="kanban-board">
+              <div class="kanban-column" data-status="backlog">
+                <h4>Backlog</h4>
+                <div id="backlogList" class="stack-list"></div>
+              </div>
+              <div class="kanban-column" data-status="ongoing">
+                <h4>Ongoing</h4>
+                <div id="ongoingList" class="stack-list"></div>
+              </div>
+              <div class="kanban-column" data-status="done">
+                <h4>Done</h4>
+                <div id="doneList" class="stack-list"></div>
+              </div>
+            </div>
           </div>
 
           <div class="panel">
