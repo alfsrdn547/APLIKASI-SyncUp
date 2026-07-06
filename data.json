@@ -1,0 +1,185 @@
+{
+  "users": [
+    {
+      "id": "752fdfd1-caa2-43ee-920a-3c6c9b3aa4a3",
+      "name": "Alfi",
+      "email": "alfisyahrinramadan@gmail.com",
+      "workspaceIds": [
+        "22650c7d-7466-4a47-b9a5-8472ec072bbf"
+      ],
+      "passwordHash": "$2b$12$p5Lu5TOJ1XDLdMbuxb618ejHf8VJcDt..uFA7LjmWI5M/mYYGAnEq"
+    }
+  ],
+  "activeUserId": "752fdfd1-caa2-43ee-920a-3c6c9b3aa4a3",
+  "state": {
+    "members": [
+      {
+        "id": "3c0beb81-603a-4e13-bae7-9ae8cca8b804",
+        "name": "Demo Tim",
+        "role": "Project Lead"
+      },
+      {
+        "id": "a5cf2e06-74c8-488e-a979-e8486a4aeb58",
+        "name": "Rina",
+        "role": "Designer"
+      },
+      {
+        "id": "4f8ad7c9-0338-40fd-b89e-a87489b34c29",
+        "name": "Budi",
+        "role": "Developer"
+      }
+    ],
+    "events": [
+      {
+        "id": "d2073772-8465-4f07-bb5f-3de1fc325efe",
+        "title": "Standup harian",
+        "date": "2026-07-05",
+        "priority": "Tinggi",
+        "note": "Update progres tim"
+      },
+      {
+        "id": "4a7919db-a882-4dfe-bc88-773df15b9e8d",
+        "title": "Demo fitur baru",
+        "date": "2026-07-07",
+        "priority": "Sedang",
+        "note": "Tunjukkan hasil sprint"
+      }
+    ],
+    "notes": [
+      "Pastikan dokumen PRD selalu tersedia di workspace.",
+      "Bagi tanggung jawab secara jelas sebelum rapat."
+    ],
+    "tasks": [
+      {
+        "id": "ad87d98b-5cd8-4f66-99e5-8fdc03b733c4",
+        "title": "Review sprint backlog",
+        "done": true,
+        "date": "2026-07-05",
+        "priority": "Tinggi",
+        "note": "Diskusikan prioritas sprint",
+        "assignee": "Demo Tim",
+        "status": "done"
+      },
+      {
+        "id": "54616b72-431b-4212-8f03-97f4462d2de0",
+        "title": "Perbarui desain landing page",
+        "done": false,
+        "date": "2026-07-06",
+        "priority": "Sedang",
+        "note": "Siapkan versi final",
+        "assignee": "Rina",
+        "status": "backlog"
+      }
+    ]
+  },
+  "workspaces": [
+    {
+      "id": "22650c7d-7466-4a47-b9a5-8472ec072bbf",
+      "name": "Workspace Pribadi",
+      "description": "",
+      "ownerId": "752fdfd1-caa2-43ee-920a-3c6c9b3aa4a3",
+      "createdAt": "2026-07-05T18:26:41.712911+00:00",
+      "members": [
+        {
+          "id": "3c0beb81-603a-4e13-bae7-9ae8cca8b804",
+          "name": "Demo Tim",
+          "role": "Project Lead"
+        },
+        {
+          "id": "a5cf2e06-74c8-488e-a979-e8486a4aeb58",
+          "name": "Rina",
+          "role": "Designer"
+        },
+        {
+          "id": "4f8ad7c9-0338-40fd-b89e-a87489b34c29",
+          "name": "Budi",
+          "role": "Developer"
+        }
+      ],
+      "invites": [],
+      "tags": [
+        {
+          "id": "tag-bug",
+          "name": "Bug",
+          "color": "#ef4444"
+        },
+        {
+          "id": "tag-feature",
+          "name": "Feature",
+          "color": "#3861fb"
+        },
+        {
+          "id": "tag-docs",
+          "name": "Docs",
+          "color": "#10b981"
+        },
+        {
+          "id": "tag-design",
+          "name": "Design",
+          "color": "#a855f7"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "ad87d98b-5cd8-4f66-99e5-8fdc03b733c4",
+          "title": "Review sprint backlog",
+          "done": true,
+          "date": "2026-07-05",
+          "priority": "Tinggi",
+          "note": "Diskusikan prioritas sprint",
+          "assignee": "Demo Tim",
+          "status": "done",
+          "assigneeId": null,
+          "tags": [],
+          "comments": [],
+          "recurrence": "none",
+          "estimatedHours": null,
+          "actualSeconds": 0
+        },
+        {
+          "id": "54616b72-431b-4212-8f03-97f4462d2de0",
+          "title": "Perbarui desain landing page",
+          "done": false,
+          "date": "2026-07-06",
+          "priority": "Sedang",
+          "note": "Siapkan versi final",
+          "assignee": "Rina",
+          "status": "backlog",
+          "assigneeId": null,
+          "tags": [],
+          "comments": [],
+          "recurrence": "none",
+          "estimatedHours": null,
+          "actualSeconds": 0
+        }
+      ],
+      "events": [
+        {
+          "id": "d2073772-8465-4f07-bb5f-3de1fc325efe",
+          "title": "Standup harian",
+          "date": "2026-07-05",
+          "priority": "Tinggi",
+          "note": "Update progres tim"
+        },
+        {
+          "id": "4a7919db-a882-4dfe-bc88-773df15b9e8d",
+          "title": "Demo fitur baru",
+          "date": "2026-07-07",
+          "priority": "Sedang",
+          "note": "Tunjukkan hasil sprint"
+        }
+      ],
+      "notes": [
+        "Pastikan dokumen PRD selalu tersedia di workspace.",
+        "Bagi tanggung jawab secara jelas sebelum rapat."
+      ],
+      "comments": [],
+      "activity": [],
+      "archived": {
+        "tasks": [],
+        "events": []
+      }
+    }
+  ],
+  "activeWorkspaceId": null
+}
