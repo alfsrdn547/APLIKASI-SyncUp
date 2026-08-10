@@ -1,9 +1,7 @@
 """Tests for the SyncUp backend's persistence helpers and migration logic.
 
-These tests intentionally avoid touching the real `data.json` by monkey-patching
-`server.DATA_FILE` to point inside a temporary directory. They do not start the
-HTTP server, so the JSON shape that comes back from the auth/workspace endpoints
-is tested separately in `test_endpoints.py`.
+These tests avoid touching the real database by monkey-patching
+`database.DB_FILE` to point inside a temporary directory.
 """
 
 import importlib.util
@@ -20,8 +18,19 @@ server = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(server)
 
 
+def _set_db(db_path):
+    """Monkey-patch `database.DB_FILE` and return an `uninstall` callable."""
+    original = server.database.DB_FILE
+    server.database.DB_FILE = db_path
+
+    def uninstall():
+        server.database.DB_FILE = original
+
+    return uninstall
+
+
 def _set_datafile(data_path):
-    """Monkey-patch `server.DATA_FILE` and return an `uninstall` callable."""
+    """Legacy JSON path used for migration / bootstrap tests."""
     original = server.DATA_FILE
     server.DATA_FILE = data_path
 
@@ -34,8 +43,9 @@ def _set_datafile(data_path):
 class PersistenceTests(unittest.TestCase):
     def test_save_and_load_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmp:
-            data_file = os.path.join(tmp, 'data.json')
-            uninstall = _set_datafile(data_file)
+            db_file = os.path.join(tmp, 'syncup.db')
+            uninstall_db = _set_db(db_file)
+            uninstall_json = _set_datafile(os.path.join(tmp, 'no-import.json'))
             try:
                 payload = {
                     'users': [],
@@ -46,25 +56,28 @@ class PersistenceTests(unittest.TestCase):
                 server.save_data(payload)
                 self.assertEqual(server.load_data(), payload)
             finally:
-                uninstall()
+                uninstall_json()
+                uninstall_db()
 
     def test_save_is_atomic(self):
         with tempfile.TemporaryDirectory() as tmp:
-            data_file = os.path.join(tmp, 'data.json')
-            uninstall = _set_datafile(data_file)
+            db_file = os.path.join(tmp, 'syncup.db')
+            uninstall_db = _set_db(db_file)
+            uninstall_json = _set_datafile(os.path.join(tmp, 'no-import.json'))
             try:
-                server.save_data({'version': 1, 'users': [], 'workspaces': []})
-                leftovers = [n for n in os.listdir(tmp) if n.endswith('.tmp')]
-                self.assertEqual(leftovers, [])
+                server.save_data({'users': [], 'workspaces': [], 'activeUserId': None, 'activeWorkspaceId': None})
+                self.assertTrue(os.path.isfile(db_file))
             finally:
-                uninstall()
+                uninstall_json()
+                uninstall_db()
 
     def test_concurrent_writes_do_not_corrupt(self):
         import threading
 
         with tempfile.TemporaryDirectory() as tmp:
-            data_file = os.path.join(tmp, 'data.json')
-            uninstall = _set_datafile(data_file)
+            db_file = os.path.join(tmp, 'syncup.db')
+            uninstall_db = _set_db(db_file)
+            uninstall_json = _set_datafile(os.path.join(tmp, 'no-import.json'))
             try:
                 errors = []
 
@@ -72,9 +85,10 @@ class PersistenceTests(unittest.TestCase):
                     try:
                         for i in range(20):
                             server.save_data({
-                                'version': i,
-                                'users': [{'id': f'user-{idx}-{i}'}],
+                                'users': [{'id': f'user-{idx}-{i}', 'name': 'U', 'email': f'u{idx}{i}@x.co', 'passwordHash': 'x', 'workspaceIds': []}],
                                 'workspaces': [],
+                                'activeUserId': None,
+                                'activeWorkspaceId': None,
                             })
                     except Exception as exc:  # pragma: no cover - error path
                         errors.append(exc)
@@ -86,10 +100,10 @@ class PersistenceTests(unittest.TestCase):
                     t.join()
 
                 self.assertEqual(errors, [])
-                with open(data_file, 'r', encoding='utf-8') as fh:
-                    json.load(fh)
+                server.load_data()
             finally:
-                uninstall()
+                uninstall_json()
+                uninstall_db()
 
 
 class MigrationTests(unittest.TestCase):
@@ -115,11 +129,13 @@ class MigrationTests(unittest.TestCase):
             }
             with open(data_file, 'w', encoding='utf-8') as fh:
                 json.dump(legacy, fh)
-            uninstall = _set_datafile(data_file)
+            uninstall_db = _set_db(os.path.join(tmp, 'syncup.db'))
+            uninstall_json = _set_datafile(data_file)
             try:
                 data = server.load_data()
             finally:
-                uninstall()
+                uninstall_json()
+                uninstall_db()
             user = data['users'][0]
             self.assertNotIn('tasks', user)
             self.assertNotIn('members', user)
@@ -145,11 +161,13 @@ class MigrationTests(unittest.TestCase):
             }
             with open(data_file, 'w', encoding='utf-8') as fh:
                 json.dump(legacy, fh)
-            uninstall = _set_datafile(data_file)
+            uninstall_db = _set_db(os.path.join(tmp, 'syncup.db'))
+            uninstall_json = _set_datafile(data_file)
             try:
                 data = server.load_data()
             finally:
-                uninstall()
+                uninstall_json()
+                uninstall_db()
             user = data['users'][0]
             self.assertTrue(user['passwordHash'].startswith('$2'))
             self.assertTrue(server._verify_password('plain', user['passwordHash']))

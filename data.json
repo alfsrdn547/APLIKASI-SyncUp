@@ -8,9 +8,19 @@
         "22650c7d-7466-4a47-b9a5-8472ec072bbf"
       ],
       "passwordHash": "$2b$12$p5Lu5TOJ1XDLdMbuxb618ejHf8VJcDt..uFA7LjmWI5M/mYYGAnEq"
+    },
+    {
+      "id": "19f61f7f-a7ba-45f8-9e6e-3c835b67e706",
+      "name": "Alfi",
+      "email": "alfisyahrinramadan547@gmail.com",
+      "passwordHash": "$2b$12$95yRF1BZeP8xHAbISYa3CeCvMRtipnzjTp0urOgYSsblSfFPRNsBG",
+      "createdAt": "2026-07-29T11:02:52.211046+00:00",
+      "workspaceIds": [
+        "bb0a10c8-033b-4607-8ac2-69f705b04dff"
+      ]
     }
   ],
-  "activeUserId": "752fdfd1-caa2-43ee-920a-3c6c9b3aa4a3",
+  "activeUserId": "19f61f7f-a7ba-45f8-9e6e-3c835b67e706",
   "state": {
     "members": [
       {
@@ -179,7 +189,87 @@
         "tasks": [],
         "events": []
       }
+    },
+    {
+      "id": "bb0a10c8-033b-4607-8ac2-69f705b04dff",
+      "name": "Workspace Alfi",
+      "description": "",
+      "ownerId": "19f61f7f-a7ba-45f8-9e6e-3c835b67e706",
+      "createdAt": "2026-07-29T11:02:52.211115+00:00",
+      "members": [
+        {
+          "id": "f587d861-c781-4369-9522-dac80e3e63dd",
+          "userId": "19f61f7f-a7ba-45f8-9e6e-3c835b67e706",
+          "name": "Alfi",
+          "role": "Owner",
+          "joinedAt": "2026-07-29T11:02:52.211126+00:00"
+        }
+      ],
+      "invites": [],
+      "tags": [
+        {
+          "id": "tag-bug",
+          "name": "Bug",
+          "color": "#ef4444"
+        },
+        {
+          "id": "tag-feature",
+          "name": "Feature",
+          "color": "#3861fb"
+        },
+        {
+          "id": "tag-docs",
+          "name": "Docs",
+          "color": "#10b981"
+        },
+        {
+          "id": "tag-design",
+          "name": "Design",
+          "color": "#a855f7"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "02b38f42-30b3-494f-8e99-674fa1f445c9",
+          "title": "sprint",
+          "date": "2026-07-01",
+          "priority": "Tinggi",
+          "assigneeId": "f587d861-c781-4369-9522-dac80e3e63dd",
+          "attachment": "",
+          "note": "",
+          "status": "backlog",
+          "done": false,
+          "tags": [],
+          "comments": [],
+          "recurrence": "none",
+          "recurrenceEnd": null,
+          "estimatedHours": null,
+          "actualSeconds": 0,
+          "createdBy": "19f61f7f-a7ba-45f8-9e6e-3c835b67e706",
+          "createdAt": "2026-07-29T11:10:20.866Z",
+          "updatedAt": "2026-07-29T11:10:20.867Z"
+        }
+      ],
+      "events": [],
+      "notes": [],
+      "comments": [],
+      "activity": [
+        {
+          "id": "8fcaaeb7-2c0c-406b-bd2c-5002cd895804",
+          "actorId": "19f61f7f-a7ba-45f8-9e6e-3c835b67e706",
+          "actorName": "Alfi",
+          "timestamp": "2026-07-29T11:10:20.867Z",
+          "action": "task.create",
+          "targetType": "task",
+          "targetId": "02b38f42-30b3-494f-8e99-674fa1f445c9",
+          "targetTitle": "sprint"
+        }
+      ],
+      "archived": {
+        "tasks": [],
+        "events": []
+      }
     }
   ],
-  "activeWorkspaceId": null
+  "activeWorkspaceId": "bb0a10c8-033b-4607-8ac2-69f705b04dff"
 }

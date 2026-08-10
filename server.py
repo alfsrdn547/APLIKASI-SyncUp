@@ -1,23 +1,23 @@
 """SyncUp backend server.
 
 A small threaded HTTP server that serves the static frontend, the JSON workspace
-API, and the multi-user auth + workspace management endpoints. The data file
-`data.json` is written atomically with a `threading.Lock` to avoid corruption
-when multiple tabs / processes save at the same time.
+API, and the multi-user auth + workspace management endpoints. Application state
+is persisted in SQLite (`syncup.db`); legacy `data.json` is imported once when
+the database is empty.
 """
 
 import json
 import os
 import re
 import secrets
-import shutil
-import tempfile
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 import bcrypt
+
+import database
 
 ROOT = os.path.dirname(__file__)
 DATA_FILE = os.path.join(ROOT, 'data.json')
@@ -26,9 +26,6 @@ BACKUP_DIR = os.path.join(ROOT, 'backups')
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
-
-# Serialise concurrent reads/writes to data.json.
-DATA_LOCK = threading.Lock()
 
 # In-memory session store. Token -> { userId, createdAt }.
 # Sessions are lost on restart, which is acceptable for a local MVP.
@@ -206,26 +203,16 @@ def _normalize_events(events):
     return out
 
 
-# ---- Persistence ------------------------------------------------------------
+# ---- Persistence (SQLite via database.py) -----------------------------------
 
 def load_data():
-    """Load and migrate data.json. Returns the (possibly freshly-initialised)
-    data dict.
-    """
-    with DATA_LOCK:
-        if not os.path.exists(DATA_FILE):
-            return {
-                'users': [],
-                'workspaces': [],
-                'activeUserId': None,
-                'activeWorkspaceId': None,
-            }
-        with open(DATA_FILE, 'r', encoding='utf-8') as fh:
-            data = json.load(fh)
+    """Load from SQLite (import legacy data.json once if DB is empty)."""
+    database.bootstrap_from_json(DATA_FILE, BACKUP_DIR, migrate_fn=_migrate_legacy_data)
+    data = database.load_data()
 
-    # Auto-migrate from the old embedded-data shape if present.
+    # Re-run migration if an older export still embeds lists on user records.
     if any('members' in u or 'tasks' in u for u in data.get('users', [])):
-        backup_path = os.path.join(BACKUP_DIR, f'data.pre-migration.json')
+        backup_path = os.path.join(BACKUP_DIR, 'data.pre-migration.json')
         try:
             with open(backup_path, 'w', encoding='utf-8') as fh:
                 json.dump(data, fh, indent=2, ensure_ascii=False)
@@ -240,20 +227,8 @@ def load_data():
 
 
 def save_data(payload):
-    """Atomically write `payload` to data.json (temp + os.replace)."""
-    with DATA_LOCK:
-        directory = os.path.dirname(DATA_FILE) or '.'
-        fd, tmp_path = tempfile.mkstemp(prefix='data.', suffix='.json.tmp', dir=directory)
-        try:
-            with os.fdopen(fd, 'w', encoding='utf-8') as fh:
-                json.dump(payload, fh, indent=2, ensure_ascii=False)
-            os.replace(tmp_path, DATA_FILE)
-        except Exception:
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
-            raise
+    """Persist application state to SQLite."""
+    database.save_data(payload)
 
 
 # ---- Request helpers --------------------------------------------------------
@@ -776,6 +751,6 @@ def _resolve_workspace(user, data):
 if __name__ == '__main__':
     server = ThreadingHTTPServer(('127.0.0.1', 8000), Handler)
     print('Server SyncUp berjalan di http://127.0.0.1:8000')
-    print(f'Data tersimpan di: {DATA_FILE}')
+    print(f'Database: {database.DB_FILE}')
     print(f'Upload tersimpan di: {UPLOAD_DIR}')
     server.serve_forever()
