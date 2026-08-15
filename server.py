@@ -327,8 +327,12 @@ class Handler(BaseHTTPRequestHandler):
             })
             return
 
-        if path in ('', '/', '/index.html'):
+        if path in ('', '/', '/index.html', '/login', '/login.html'):
             self._serve_file(os.path.join(ROOT, 'index.html'), 'text/html; charset=utf-8')
+            return
+
+        if path in ('/app', '/app.html'):
+            self._serve_file(os.path.join(ROOT, 'app.html'), 'text/html; charset=utf-8')
             return
 
         if path.startswith('/uploads/'):

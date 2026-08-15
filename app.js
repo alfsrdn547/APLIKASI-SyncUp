@@ -400,10 +400,11 @@ const authTabs = document.querySelectorAll('.auth-tab');
 const currentUserName = document.getElementById('currentUserName');
 const logoutBtn = document.getElementById('logoutBtn');
 const inviteField = document.getElementById('registerInvite');
-const loginSubmitBtn = loginForm.querySelector('button[type="submit"]');
-const registerSubmitBtn = registerForm.querySelector('button[type="submit"]');
+const loginSubmitBtn = loginForm ? loginForm.querySelector('button[type="submit"]') : null;
+const registerSubmitBtn = registerForm ? registerForm.querySelector('button[type="submit"]') : null;
 
 function showAuthMessage(message, isError = false) {
+  if (!authMessage) return;
   authMessage.textContent = message || '';
   authMessage.style.color = isError ? '#dc2626' : '#10b981';
   if (message) {
@@ -424,96 +425,121 @@ function setAuthBusy(formEl, busy) {
 
 function updateAuthView() {
   const loggedIn = Boolean(app.user && activeWorkspace());
-  authScreen.classList.toggle('hidden', loggedIn);
-  appShell.classList.toggle('hidden', !loggedIn);
-  if (loggedIn) {
+  if (authScreen) {
+    authScreen.classList.toggle('hidden', loggedIn);
+  }
+  if (appShell) {
+    appShell.classList.toggle('hidden', !loggedIn);
+  }
+  if (loggedIn && currentUserName) {
     currentUserName.textContent = app.user.name;
   }
-  populateWorkspaceSwitcher();
-  populateAssigneeOptions();
+  if (loggedIn) {
+    populateWorkspaceSwitcher();
+    populateAssigneeOptions();
+  }
 }
 
-loginForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const password = document.getElementById('loginPassword').value;
-  if (!email || !password) return;
-  setAuthBusy(loginForm, true);
-  try {
-    const data = await api.login({ email, password });
-    setToken(data.token);
-    applyServerData(data);
-    showAuthMessage('Berhasil masuk. Selamat datang kembali!');
-    updateAuthView();
-    renderAll();
-  } catch (error) {
-    showAuthMessage(error.message, true);
-  } finally {
-    setAuthBusy(loginForm, false);
-  }
-});
-
-registerForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const name = document.getElementById('registerName').value.trim();
-  const email = document.getElementById('registerEmail').value.trim().toLowerCase();
-  const password = document.getElementById('registerPassword').value;
-  const confirm = document.getElementById('registerConfirm').value;
-  const inviteCode = inviteField ? inviteField.value.trim().toUpperCase() : '';
-
-  if (password.length < 6) {
-    showAuthMessage('Password minimal 6 karakter.', true);
-    return;
-  }
-  if (password !== confirm) {
-    showAuthMessage('Konfirmasi password tidak cocok.', true);
-    return;
-  }
-  setAuthBusy(registerForm, true);
-  try {
-    const data = await api.register({ name, email, password, inviteCode });
-    setToken(data.token);
-    applyServerData(data);
-    showAuthMessage(inviteCode ? 'Akun dibuat dan Anda bergabung ke workspace.' : `Akun ${name} berhasil dibuat.`);
-    updateAuthView();
-    renderAll();
-    if (data.workspaces && data.workspaces.length > 1) {
-      openOnboarding();
+if (loginForm) {
+  loginForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) return;
+    setAuthBusy(loginForm, true);
+    try {
+      const data = await api.login({ email, password });
+      setToken(data.token);
+      applyServerData(data);
+      showAuthMessage('Berhasil masuk. Selamat datang kembali!');
+      updateAuthView();
+      renderAll();
+      window.location.href = 'app.html';
+    } catch (error) {
+      showAuthMessage(error.message, true);
+    } finally {
+      setAuthBusy(loginForm, false);
     }
-  } catch (error) {
-    showAuthMessage(error.message, true);
-  } finally {
-    setAuthBusy(registerForm, false);
-  }
-});
-
-authTabs.forEach((tab) => {
-  tab.addEventListener('click', () => {
-    authTabs.forEach((item) => item.classList.remove('active'));
-    tab.classList.add('active');
-    const target = tab.dataset.authTab;
-    loginForm.classList.toggle('hidden', target === 'register');
-    registerForm.classList.toggle('hidden', target === 'login');
-    showAuthMessage('');
   });
-});
+}
 
-logoutBtn.addEventListener('click', async () => {
-  try {
-    await api.logout();
-  } catch (_) {
-    // ignore — we still clear local state
-  }
-  setToken('');
-  app.user = null;
-  app.workspaces = [];
-  app.activeWorkspaceId = null;
-  localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
-  updateAuthView();
-  showAuthMessage('Anda telah keluar. Sampai jumpa kembali!');
-  loginForm.reset();
-  registerForm.reset();
-});
+if (registerForm) {
+  registerForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const name = document.getElementById('registerName').value.trim();
+    const email = document.getElementById('registerEmail').value.trim().toLowerCase();
+    const password = document.getElementById('registerPassword').value;
+    const confirm = document.getElementById('registerConfirm').value;
+    const inviteCode = inviteField ? inviteField.value.trim().toUpperCase() : '';
+
+    if (password.length < 6) {
+      showAuthMessage('Password minimal 6 karakter.', true);
+      return;
+    }
+    if (password !== confirm) {
+      showAuthMessage('Konfirmasi password tidak cocok.', true);
+      return;
+    }
+    setAuthBusy(registerForm, true);
+    try {
+      const data = await api.register({ name, email, password, inviteCode });
+      setToken(data.token);
+      applyServerData(data);
+      showAuthMessage(inviteCode ? 'Akun dibuat dan Anda bergabung ke workspace.' : `Akun ${name} berhasil dibuat.`);
+      updateAuthView();
+      renderAll();
+      if (data.workspaces && data.workspaces.length > 1) {
+        openOnboarding();
+      }
+      window.location.href = 'app.html';
+    } catch (error) {
+      showAuthMessage(error.message, true);
+    } finally {
+      setAuthBusy(registerForm, false);
+    }
+  });
+}
+
+if (authTabs.length) {
+  authTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      authTabs.forEach((item) => item.classList.remove('active'));
+      tab.classList.add('active');
+      const target = tab.dataset.authTab;
+      if (loginForm) {
+        loginForm.classList.toggle('hidden', target === 'register');
+      }
+      if (registerForm) {
+        registerForm.classList.toggle('hidden', target === 'login');
+      }
+      showAuthMessage('');
+    });
+  });
+}
+
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      await api.logout();
+    } catch (_) {
+      // ignore — we still clear local state
+    }
+    setToken('');
+    app.user = null;
+    app.workspaces = [];
+    app.activeWorkspaceId = null;
+    localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+    updateAuthView();
+    showAuthMessage('Anda telah keluar. Sampai jumpa kembali!');
+    if (loginForm) {
+      loginForm.reset();
+    }
+    if (registerForm) {
+      registerForm.reset();
+    }
+    window.location.href = 'index.html';
+  });
+}
 
 // ---------------------------------------------------------------------------
 // 5. Render layer
@@ -1417,278 +1443,280 @@ function toggleTimer(taskId) {
 // 8. UI wiring
 // ---------------------------------------------------------------------------
 
-dom.form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const title = dom.title.value.trim();
-  const date = dom.date.value;
-  const priority = dom.priority.value;
-  const assigneeId = dom.assignee.value || null;
-  const note = dom.note.value.trim();
-  const type = dom.type.value;
-  const recurrence = dom.recurrence ? dom.recurrence.value : 'none';
-  const estimatedHours = dom.estimatedHours ? Number(dom.estimatedHours.value) || null : null;
-  const tags = dom.formTags ? Array.from(dom.formTags.querySelectorAll('input:checked')).map((el) => el.value) : [];
+if (dom.form) {
+  dom.form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const title = dom.title.value.trim();
+    const date = dom.date.value;
+    const priority = dom.priority.value;
+    const assigneeId = dom.assignee.value || null;
+    const note = dom.note.value.trim();
+    const type = dom.type.value;
+    const recurrence = dom.recurrence ? dom.recurrence.value : 'none';
+    const estimatedHours = dom.estimatedHours ? Number(dom.estimatedHours.value) || null : null;
+    const tags = dom.formTags ? Array.from(dom.formTags.querySelectorAll('input:checked')).map((el) => el.value) : [];
 
-  if (!title || !date) {
-    alert('Judul dan tanggal wajib diisi.');
-    return;
-  }
-
-  let attachmentName = '';
-  if (dom.attachment.files && dom.attachment.files[0]) {
-    try {
-      const result = await api.upload(dom.attachment.files[0]);
-      attachmentName = result.filename;
-    } catch (error) {
-      alert(`Upload gagal: ${error.message}`);
+    if (!title || !date) {
+      alert('Judul dan tanggal wajib diisi.');
       return;
     }
-  }
 
-  if (type === 'task') {
-    addTask({ title, date, priority, assigneeId, attachment: attachmentName, note, recurrence, estimatedHours, tags });
-  } else {
-    addEvent({ title, date, priority, note, tags });
-  }
-  dom.form.reset();
-  if (dom.formTags) dom.formTags.querySelectorAll('input').forEach((el) => { el.checked = false; });
-  renderAll();
-});
-
-dom.toggleForm.addEventListener('click', () => {
-  if (!dom.formPanel) return;
-  dom.formPanel.classList.toggle('collapsed');
-});
-
-dom.taskSearch.addEventListener('input', renderTasks);
-dom.taskFilter.addEventListener('change', renderTasks);
-dom.calendarDate.addEventListener('change', renderEvents);
-dom.priorityFilter.addEventListener('change', () => { renderEvents(); renderTasks(); });
-
-dom.noteForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const value = dom.noteInput.value.trim();
-  if (!value) return;
-  addNote(value);
-  dom.noteInput.value = '';
-  renderNotes();
-});
-
-dom.memberForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const name = dom.memberName.value.trim();
-  const role = dom.memberRole.value.trim();
-  if (!name) return;
-  addMember(name, role || 'Member');
-  dom.memberName.value = '';
-  dom.memberRole.value = '';
-  renderMembers();
-  renderStats();
-});
-
-dom.exportBtn.addEventListener('click', () => {
-  const workspace = activeWorkspace();
-  if (!workspace) return;
-  const data = {
-    exportedAt: isoNow(),
-    workspace: { name: workspace.name, description: workspace.description },
-    stats: {
-      tasks: workspace.tasks.length,
-      done: workspace.tasks.filter((t) => t.done).length,
-      events: workspace.events.length,
-      notes: workspace.notes.length,
-      members: workspace.members.length,
-    },
-    tasks: workspace.tasks,
-    events: workspace.events,
-    notes: workspace.notes,
-    members: workspace.members,
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `syncup-${workspace.name.replace(/\s+/g, '-')}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
-});
-
-dom.importBtn.addEventListener('click', () => dom.importFile.click());
-dom.importFile.addEventListener('change', async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (!confirm('Import akan mengganti data workspace aktif. Lanjutkan?')) {
-    event.target.value = '';
-    return;
-  }
-  try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-    if (!data.workspace || !Array.isArray(data.tasks)) {
-      throw new Error('File bukan format SyncUp yang valid.');
+    let attachmentName = '';
+    if (dom.attachment.files && dom.attachment.files[0]) {
+      try {
+        const result = await api.upload(dom.attachment.files[0]);
+        attachmentName = result.filename;
+      } catch (error) {
+        alert(`Upload gagal: ${error.message}`);
+        return;
+      }
     }
-    const workspace = activeWorkspace();
-    if (!workspace) throw new Error('Tidak ada workspace aktif.');
-    workspace.tasks = data.tasks;
-    workspace.events = data.events || [];
-    workspace.notes = data.notes || [];
-    if (Array.isArray(data.members)) workspace.members = data.members;
-    logActivity(workspace, { action: 'workspace.update', targetType: 'workspace', targetId: workspace.id, targetTitle: workspace.name, metadata: { import: true } });
-    saveWorkspaceSoon();
+
+    if (type === 'task') {
+      addTask({ title, date, priority, assigneeId, attachment: attachmentName, note, recurrence, estimatedHours, tags });
+    } else {
+      addEvent({ title, date, priority, note, tags });
+    }
+    dom.form.reset();
+    if (dom.formTags) dom.formTags.querySelectorAll('input').forEach((el) => { el.checked = false; });
     renderAll();
-    alert('Import berhasil.');
-  } catch (error) {
-    alert(`Import gagal: ${error.message}`);
-  } finally {
-    event.target.value = '';
-  }
-});
+  });
 
-dom.themeToggle.addEventListener('click', () => {
-  document.body.classList.toggle('dark-theme');
-  const isDark = document.body.classList.contains('dark-theme');
-  dom.themeToggle.textContent = isDark ? '☀️ Terang' : '🌙 Gelap';
-  localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
-});
+  dom.toggleForm.addEventListener('click', () => {
+    if (!dom.formPanel) return;
+    dom.formPanel.classList.toggle('collapsed');
+  });
 
-// Workspace switcher
-dom.workspaceSwitcher.addEventListener('change', async (event) => {
-  const newId = event.target.value;
-  if (newId === app.activeWorkspaceId) return;
-  try {
-    await api.switchWorkspace(newId);
-    setActiveWorkspace(newId);
-  } catch (error) {
-    alert(error.message);
-  }
-});
+  dom.taskSearch.addEventListener('input', renderTasks);
+  dom.taskFilter.addEventListener('change', renderTasks);
+  dom.calendarDate.addEventListener('change', renderEvents);
+  dom.priorityFilter.addEventListener('change', () => { renderEvents(); renderTasks(); });
 
-dom.workspaceCreateBtn.addEventListener('click', () => openWorkspaceModal());
-dom.workspaceEditBtn.addEventListener('click', () => openWorkspaceModal(true));
-dom.workspaceInviteBtn.addEventListener('click', () => openInviteModal());
-dom.workspaceLeaveBtn.addEventListener('click', () => leaveWorkspace());
-
-// Notifications
-dom.notificationBell.addEventListener('click', () => {
-  dom.notificationPanel.classList.toggle('hidden');
-  // Mark all as read on open
-  const items = generateNotifications(activeWorkspace() || { tasks: [], events: [] });
-  const now = isoNow();
-  items.forEach((n) => { readState.notifications[n.id] = now; });
-  renderNotifications();
-});
-document.addEventListener('click', (event) => {
-  if (!dom.notificationPanel || dom.notificationPanel.classList.contains('hidden')) return;
-  if (dom.notificationPanel.contains(event.target) || dom.notificationBell.contains(event.target)) return;
-  dom.notificationPanel.classList.add('hidden');
-});
-
-// Global search
-dom.globalSearchTrigger.addEventListener('click', openSearchModal);
-document.addEventListener('keydown', (event) => {
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+  dom.noteForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    openSearchModal();
-  }
-  if (event.key === 'Escape') {
-    closeAllModals();
-  }
-});
+    const value = dom.noteInput.value.trim();
+    if (!value) return;
+    addNote(value);
+    dom.noteInput.value = '';
+    renderNotes();
+  });
 
-dom.globalSearchInput.addEventListener('input', debounce(() => runGlobalSearch(dom.globalSearchInput.value), 120));
-
-// Profile
-dom.profileTrigger.addEventListener('click', openProfileModal);
-dom.profileSaveBtn.addEventListener('click', saveProfile);
-dom.profilePasswordBtn.addEventListener('click', changePassword);
-
-// Tags manager
-if (dom.tagsManagerForm) {
-  dom.tagsManagerForm.addEventListener('submit', (event) => {
+  dom.memberForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    const name = dom.tagName.value.trim();
-    const color = dom.tagColor.value;
+    const name = dom.memberName.value.trim();
+    const role = dom.memberRole.value.trim();
     if (!name) return;
-    createTag(name, color);
-    dom.tagName.value = '';
-    dom.tagColor.value = '#3861fb';
-    renderTagsManager();
-    renderTagsPicker();
+    addMember(name, role || 'Member');
+    dom.memberName.value = '';
+    dom.memberRole.value = '';
+    renderMembers();
+    renderStats();
+  });
+
+  dom.exportBtn.addEventListener('click', () => {
+    const workspace = activeWorkspace();
+    if (!workspace) return;
+    const data = {
+      exportedAt: isoNow(),
+      workspace: { name: workspace.name, description: workspace.description },
+      stats: {
+        tasks: workspace.tasks.length,
+        done: workspace.tasks.filter((t) => t.done).length,
+        events: workspace.events.length,
+        notes: workspace.notes.length,
+        members: workspace.members.length,
+      },
+      tasks: workspace.tasks,
+      events: workspace.events,
+      notes: workspace.notes,
+      members: workspace.members,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `syncup-${workspace.name.replace(/\s+/g, '-')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+
+  dom.importBtn.addEventListener('click', () => dom.importFile.click());
+  dom.importFile.addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!confirm('Import akan mengganti data workspace aktif. Lanjutkan?')) {
+      event.target.value = '';
+      return;
+    }
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.workspace || !Array.isArray(data.tasks)) {
+        throw new Error('File bukan format SyncUp yang valid.');
+      }
+      const workspace = activeWorkspace();
+      if (!workspace) throw new Error('Tidak ada workspace aktif.');
+      workspace.tasks = data.tasks;
+      workspace.events = data.events || [];
+      workspace.notes = data.notes || [];
+      if (Array.isArray(data.members)) workspace.members = data.members;
+      logActivity(workspace, { action: 'workspace.update', targetType: 'workspace', targetId: workspace.id, targetTitle: workspace.name, metadata: { import: true } });
+      saveWorkspaceSoon();
+      renderAll();
+      alert('Import berhasil.');
+    } catch (error) {
+      alert(`Import gagal: ${error.message}`);
+    } finally {
+      event.target.value = '';
+    }
+  });
+
+  dom.themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('dark-theme');
+    const isDark = document.body.classList.contains('dark-theme');
+    dom.themeToggle.textContent = isDark ? '☀️ Terang' : '🌙 Gelap';
+    localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+  });
+
+  // Workspace switcher
+  dom.workspaceSwitcher.addEventListener('change', async (event) => {
+    const newId = event.target.value;
+    if (newId === app.activeWorkspaceId) return;
+    try {
+      await api.switchWorkspace(newId);
+      setActiveWorkspace(newId);
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+  dom.workspaceCreateBtn.addEventListener('click', () => openWorkspaceModal());
+  dom.workspaceEditBtn.addEventListener('click', () => openWorkspaceModal(true));
+  dom.workspaceInviteBtn.addEventListener('click', () => openInviteModal());
+  dom.workspaceLeaveBtn.addEventListener('click', () => leaveWorkspace());
+
+  // Notifications
+  dom.notificationBell.addEventListener('click', () => {
+    dom.notificationPanel.classList.toggle('hidden');
+    // Mark all as read on open
+    const items = generateNotifications(activeWorkspace() || { tasks: [], events: [] });
+    const now = isoNow();
+    items.forEach((n) => { readState.notifications[n.id] = now; });
+    renderNotifications();
+  });
+  document.addEventListener('click', (event) => {
+    if (!dom.notificationPanel || dom.notificationPanel.classList.contains('hidden')) return;
+    if (dom.notificationPanel.contains(event.target) || dom.notificationBell.contains(event.target)) return;
+    dom.notificationPanel.classList.add('hidden');
+  });
+
+  // Global search
+  dom.globalSearchTrigger.addEventListener('click', openSearchModal);
+  document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      openSearchModal();
+    }
+    if (event.key === 'Escape') {
+      closeAllModals();
+    }
+  });
+
+  dom.globalSearchInput.addEventListener('input', debounce(() => runGlobalSearch(dom.globalSearchInput.value), 120));
+
+  // Profile
+  dom.profileTrigger.addEventListener('click', openProfileModal);
+  dom.profileSaveBtn.addEventListener('click', saveProfile);
+  dom.profilePasswordBtn.addEventListener('click', changePassword);
+
+  // Tags manager
+  if (dom.tagsManagerForm) {
+    dom.tagsManagerForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const name = dom.tagName.value.trim();
+      const color = dom.tagColor.value;
+      if (!name) return;
+      createTag(name, color);
+      dom.tagName.value = '';
+      dom.tagColor.value = '#3861fb';
+      renderTagsManager();
+      renderTagsPicker();
+    });
+  }
+
+  // Comments
+  if (dom.commentSubmit) {
+    dom.commentSubmit.addEventListener('click', () => {
+      if (!dom.commentTarget) return;
+      const body = dom.commentInput.value.trim();
+      if (!body) return;
+      addComment(dom.commentTarget.type, dom.commentTarget.id, body);
+      dom.commentInput.value = '';
+      renderCommentModal();
+      renderAll();
+    });
+  }
+
+  // Calendar
+  dom.calendarPrev.addEventListener('click', () => {
+    dom.calendarMonth = new Date(dom.calendarMonth.getFullYear(), dom.calendarMonth.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  dom.calendarNext.addEventListener('click', () => {
+    dom.calendarMonth = new Date(dom.calendarMonth.getFullYear(), dom.calendarMonth.getMonth() + 1, 1);
+    renderCalendar();
+  });
+  dom.calendarToday.addEventListener('click', () => {
+    dom.calendarMonth = new Date();
+    renderCalendar();
+  });
+
+  // Onboarding
+  if (dom.onboardingClose) {
+    dom.onboardingClose.addEventListener('click', () => {
+      dom.onboardingModal.classList.add('hidden');
+      localStorage.setItem('syncup-onboarded', '1');
+    });
+  }
+
+  // Delegated click handler
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+
+    // Notification click
+    const notif = target.closest('[data-action="open-notification"]');
+    if (notif) {
+      const t = notif.dataset.targetType;
+      const id = notif.dataset.targetId;
+      const el = document.querySelector(`[data-${t}-id="${id}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // Calendar cell click → prefill date filter
+    const cell = target.closest('.calendar-cell');
+    if (cell && cell.dataset.date) {
+      dom.calendarDate.value = cell.dataset.date;
+      renderEvents();
+      return;
+    }
+
+    // Modal close
+    if (target.classList && target.classList.contains('modal-close')) {
+      closeAllModals();
+      return;
+    }
+    if (target.classList && target.classList.contains('modal-backdrop')) {
+      closeAllModals();
+      return;
+    }
+
+    const button = target.closest('button[data-action]');
+    if (!button) return;
+    const { action, id, index, type } = button.dataset;
+    handleAction(action, { id, index, type, event });
   });
 }
-
-// Comments
-if (dom.commentSubmit) {
-  dom.commentSubmit.addEventListener('click', () => {
-    if (!dom.commentTarget) return;
-    const body = dom.commentInput.value.trim();
-    if (!body) return;
-    addComment(dom.commentTarget.type, dom.commentTarget.id, body);
-    dom.commentInput.value = '';
-    renderCommentModal();
-    renderAll();
-  });
-}
-
-// Calendar
-dom.calendarPrev.addEventListener('click', () => {
-  dom.calendarMonth = new Date(dom.calendarMonth.getFullYear(), dom.calendarMonth.getMonth() - 1, 1);
-  renderCalendar();
-});
-dom.calendarNext.addEventListener('click', () => {
-  dom.calendarMonth = new Date(dom.calendarMonth.getFullYear(), dom.calendarMonth.getMonth() + 1, 1);
-  renderCalendar();
-});
-dom.calendarToday.addEventListener('click', () => {
-  dom.calendarMonth = new Date();
-  renderCalendar();
-});
-
-// Onboarding
-if (dom.onboardingClose) {
-  dom.onboardingClose.addEventListener('click', () => {
-    dom.onboardingModal.classList.add('hidden');
-    localStorage.setItem('syncup-onboarded', '1');
-  });
-}
-
-// Delegated click handler
-document.addEventListener('click', (event) => {
-  const target = event.target;
-
-  // Notification click
-  const notif = target.closest('[data-action="open-notification"]');
-  if (notif) {
-    const t = notif.dataset.targetType;
-    const id = notif.dataset.targetId;
-    const el = document.querySelector(`[data-${t}-id="${id}"]`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
-
-  // Calendar cell click → prefill date filter
-  const cell = target.closest('.calendar-cell');
-  if (cell && cell.dataset.date) {
-    dom.calendarDate.value = cell.dataset.date;
-    renderEvents();
-    return;
-  }
-
-  // Modal close
-  if (target.classList && target.classList.contains('modal-close')) {
-    closeAllModals();
-    return;
-  }
-  if (target.classList && target.classList.contains('modal-backdrop')) {
-    closeAllModals();
-    return;
-  }
-
-  const button = target.closest('button[data-action]');
-  if (!button) return;
-  const { action, id, index, type } = button.dataset;
-  handleAction(action, { id, index, type, event });
-});
 
 function handleAction(action, payload) {
   const workspace = activeWorkspace();
@@ -1848,35 +1876,38 @@ function openWorkspaceModal(edit = false) {
   document.getElementById('workspaceMode').value = edit ? 'edit' : 'create';
 }
 
-document.getElementById('workspaceForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const name = document.getElementById('workspaceNameInput').value.trim();
-  const description = document.getElementById('workspaceDescInput').value.trim();
-  const mode = document.getElementById('workspaceMode').value;
-  if (!name) return;
-  try {
-    if (mode === 'create') {
-      const data = await api.createWorkspace({ name, description });
-      // Refresh workspace list from server
-      const refreshed = await api.workspace();
-      applyServerData(refreshed);
-      updateAuthView();
-      renderAll();
-      alert(`Workspace "${data.workspace.name}" berhasil dibuat.`);
-    } else {
-      const workspace = activeWorkspace();
-      workspace.name = name;
-      workspace.description = description;
-      logActivity(workspace, { action: 'workspace.update', targetType: 'workspace', targetId: workspace.id, targetTitle: workspace.name });
-      saveWorkspaceSoon();
-      populateWorkspaceSwitcher();
-      renderAll();
+const workspaceForm = document.getElementById('workspaceForm');
+if (workspaceForm) {
+  workspaceForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const name = document.getElementById('workspaceNameInput').value.trim();
+    const description = document.getElementById('workspaceDescInput').value.trim();
+    const mode = document.getElementById('workspaceMode').value;
+    if (!name) return;
+    try {
+      if (mode === 'create') {
+        const data = await api.createWorkspace({ name, description });
+        // Refresh workspace list from server
+        const refreshed = await api.workspace();
+        applyServerData(refreshed);
+        updateAuthView();
+        renderAll();
+        alert(`Workspace "${data.workspace.name}" berhasil dibuat.`);
+      } else {
+        const workspace = activeWorkspace();
+        workspace.name = name;
+        workspace.description = description;
+        logActivity(workspace, { action: 'workspace.update', targetType: 'workspace', targetId: workspace.id, targetTitle: workspace.name });
+        saveWorkspaceSoon();
+        populateWorkspaceSwitcher();
+        renderAll();
+      }
+      closeAllModals();
+    } catch (error) {
+      alert(error.message);
     }
-    closeAllModals();
-  } catch (error) {
-    alert(error.message);
-  }
-});
+  });
+}
 
 function openInviteModal() {
   const workspace = activeWorkspace();
@@ -1905,10 +1936,13 @@ function renderInvites() {
   `).join('');
 }
 
-document.getElementById('inviteCreateBtn').addEventListener('click', () => {
-  const code = createInvite();
-  if (code) renderInvites();
-});
+const inviteCreateBtn = document.getElementById('inviteCreateBtn');
+if (inviteCreateBtn) {
+  inviteCreateBtn.addEventListener('click', () => {
+    const code = createInvite();
+    if (code) renderInvites();
+  });
+}
 
 document.addEventListener('click', (event) => {
   const btn = event.target.closest('[data-action="revoke-invite"]');
@@ -2091,7 +2125,9 @@ function openOnboarding() {
   const savedTheme = localStorage.getItem(THEME_KEY);
   if (savedTheme === 'dark') {
     document.body.classList.add('dark-theme');
-    dom.themeToggle.textContent = '☀️ Terang';
+    if (dom.themeToggle) {
+      dom.themeToggle.textContent = '☀️ Terang';
+    }
   }
   // Restore accent
   const accent = localStorage.getItem(ACCENT_KEY);
@@ -2099,13 +2135,17 @@ function openOnboarding() {
     document.documentElement.style.setProperty('--accent', accent);
   }
   // Restore default form date
-  dom.date.value = todayIso();
+  if (dom.date) {
+    dom.date.value = todayIso();
+  }
   // Load from server
   await loadInitial();
   if (app.user) {
     updateAuthView();
     renderAll();
     if (app.workspaces.length === 1) openOnboarding();
+  } else if (appShell && !authScreen) {
+    window.location.replace('index.html');
   } else {
     updateAuthView();
   }

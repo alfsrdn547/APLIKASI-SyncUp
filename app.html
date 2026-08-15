@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SyncUp - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="appShell" class="app-shell">
+      <aside class="sidebar">
+        <div>
+          <div class="brand">
+            <div class="brand-badge">S</div>
+            <div>
+              <h1>SyncUp</h1>
+              <p>Workspace tim</p>
+            </div>
+          </div>
+
+          <nav class="nav-links">
+            <a class="active" href="#">Dashboard</a>
+            <a href="#">Agenda</a>
+            <a href="#">Tugas</a>
+            <a href="#">Catatan</a>
+          </nav>
+        </div>
+
+        <div class="sidebar-card">
+          <h3>Momentum tim</h3>
+          <p>Semua orang tetap sinkron dengan satu ruang kerja.</p>
+          <button class="ghost-btn">Lihat ringkasan</button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Selamat pagi</p>
+            <h2>Kelola kerja tim dengan lebih rapi</h2>
+          </div>
+          <div class="topbar-actions">
+            <div class="user-pill">
+              <span id="currentUserName">Pengguna</span>
+            </div>
+            <button id="themeToggle" class="ghost-btn" type="button">🌙 Gelap</button>
+            <button id="logoutBtn" class="ghost-btn">Keluar</button>
+            <button id="toggleForm" class="primary-btn">+ Tambah item</button>
+          </div>
+        </header>
+
+        <section class="hero-card">
+          <div>
+            <p class="eyebrow">Ringkasan minggu</p>
+            <h3>Tim Anda tetap fokus pada target prioritas.</h3>
+            <p id="progressText" class="muted-text">Memuat progres...</p>
+          </div>
+          <div class="progress-pill" id="progressBar">0%</div>
+        </section>
+
+        <section class="stats-grid">
+          <article class="stat-card accent-blue">
+            <p>Agenda hari ini</p>
+            <h3 id="todayCount">0</h3>
+          </article>
+          <article class="stat-card accent-green">
+            <p>Tugas selesai</p>
+            <h3 id="doneCount">0</h3>
+          </article>
+          <article class="stat-card accent-purple">
+            <p>Anggota aktif</p>
+            <h3 id="memberCount">0</h3>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Form aktivitas</h3>
+            </div>
+            <form id="itemForm" class="item-form">
+              <label>
+                Judul
+                <input type="text" id="title" placeholder="Contoh: Review sprint" required />
+              </label>
+              <label>
+                Jenis
+                <select id="type">
+                  <option value="task">Tugas</option>
+                  <option value="event">Agenda</option>
+                </select>
+              </label>
+              <label>
+                Tanggal
+                <input type="date" id="date" required />
+              </label>
+              <label>
+                Prioritas
+                <select id="priority">
+                  <option value="Tinggi">Tinggi</option>
+                  <option value="Sedang" selected>Sedang</option>
+                  <option value="Rendah">Rendah</option>
+                </select>
+              </label>
+              <label>
+                Untuk
+                <select id="assignee"></select>
+              </label>
+              <label>
+                Catatan
+                <textarea id="note" rows="3" placeholder="Tambahkan detail singkat"></textarea>
+              </label>
+              <label>
+                Lampiran
+                <input type="file" id="attachment" />
+              </label>
+              <button class="primary-btn full" type="submit">Simpan</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Agenda mendatang</h3>
+            </div>
+            <div class="calendar-toolbar">
+              <input type="date" id="calendarDate" />
+              <select id="priorityFilter">
+                <option value="all">Semua prioritas</option>
+                <option value="Tinggi">Tinggi</option>
+                <option value="Sedang">Sedang</option>
+                <option value="Rendah">Rendah</option>
+              </select>
+            </div>
+            <div id="eventsList" class="stack-list"></div>
+          </div>
+        </section>
+
+        <section class="content-grid lower-grid">
+          <div class="panel analytics-panel">
+            <div class="panel-header">
+              <h3>Analitik cepat</h3>
+            </div>
+            <div class="analytics-list">
+              <div class="analytics-item">
+                <span>Rasio selesai</span>
+                <strong id="completionRate">0%</strong>
+              </div>
+              <div class="analytics-item">
+                <span>Agenda minggu ini</span>
+                <strong id="weekEvents">0</strong>
+              </div>
+              <div class="analytics-item">
+                <span>Catatan aktif</span>
+                <strong id="activeNotes">0</strong>
+              </div>
+            </div>
+            <div class="panel-header deadline-header">
+              <h3>Deadline mendekati</h3>
+            </div>
+            <div id="deadlineList" class="deadline-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Kanban tugas</h3>
+            </div>
+            <div class="task-toolbar">
+              <input id="taskSearch" type="text" placeholder="Cari tugas" />
+              <select id="taskFilter">
+                <option value="all">Semua</option>
+                <option value="pending">Belum selesai</option>
+                <option value="done">Selesai</option>
+              </select>
+            </div>
+            <div class="kanban-board">
+              <div class="kanban-column" data-status="backlog">
+                <h4>Backlog</h4>
+                <div id="backlogList" class="stack-list"></div>
+              </div>
+              <div class="kanban-column" data-status="ongoing">
+                <h4>Ongoing</h4>
+                <div id="ongoingList" class="stack-list"></div>
+              </div>
+              <div class="kanban-column" data-status="done">
+                <h4>Done</h4>
+                <div id="doneList" class="stack-list"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content-grid lower-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Catatan cepat</h3>
+            </div>
+            <form id="noteForm" class="note-form">
+              <input id="noteInput" type="text" placeholder="Tulis catatan baru" required />
+              <button class="primary-btn" type="submit">Tambah</button>
+            </form>
+            <div id="notesList" class="notes-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Anggota tim</h3>
+            </div>
+            <form id="memberForm" class="member-form">
+              <input id="memberName" type="text" placeholder="Nama anggota" required />
+              <input id="memberRole" type="text" placeholder="Peran" required />
+              <button class="primary-btn" type="submit">Undang</button>
+            </form>
+            <div id="membersList" class="members-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Ekspor data</h3>
+            </div>
+            <p class="muted-text">Unduh ringkasan workspace sebagai file teks.</p>
+            <button id="exportBtn" class="primary-btn full" type="button">Export ringkasan</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
