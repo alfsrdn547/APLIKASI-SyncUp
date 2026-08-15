@@ -184,8 +184,12 @@ function getToken() {
 }
 
 function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    app.sessionExpired = false; // fresh token = fresh session
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 async function apiRequest(method, path, body, options = {}) {
@@ -204,6 +208,10 @@ async function apiRequest(method, path, body, options = {}) {
   if (body instanceof FormData) init.body = body;
   else if (body !== undefined) init.body = JSON.stringify(body);
   const response = await fetch(API_BASE + path, init);
+  if (response.status === 401 && !options.skipAuth) {
+    handleSessionExpired();
+    // intentionally no return — fall through to the normal throw so callers still get the Error(.status)
+  }
   if (response.status === 204) return null;
   let data = null;
   try {
@@ -250,6 +258,7 @@ const app = {
   timer: { taskId: null, startedAt: null }, // in-memory time tracker state
   isDirty: false, // pending changes not yet persisted
   saveDebounced: null,
+  sessionExpired: false, // guards concurrent 401 handling
 };
 
 // Per-user read-states (e.g. notification read markers, comment read markers).
@@ -332,23 +341,16 @@ function applyWorkspace(workspace) {
 }
 
 async function loadInitial() {
-  const token = getToken();
-  if (!token) {
-    app.user = null;
-    app.workspaces = [];
-    app.activeWorkspaceId = null;
+  if (!getToken()) {
+    resetAuthState();
     return;
   }
   try {
     const data = await api.workspace();
     applyServerData(data);
   } catch (error) {
-    if (error.status === 401) {
-      setToken('');
-    }
-    app.user = null;
-    app.workspaces = [];
-    app.activeWorkspaceId = null;
+    // 401 already handled by the interceptor; any other error just clears local state
+    resetAuthState();
   }
 }
 
@@ -440,6 +442,23 @@ function updateAuthView() {
   }
 }
 
+function resetAuthState() {
+  setToken('');
+  app.user = null;
+  app.workspaces = [];
+  app.activeWorkspaceId = null;
+  localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+  updateAuthView();
+}
+
+function handleSessionExpired() {
+  if (app.sessionExpired) return; // idempotent for concurrent 401s
+  app.sessionExpired = true;
+  resetAuthState();
+  showAuthMessage('Sesi berakhir. Silakan login ulang.', true);
+  window.location.href = 'index.html';
+}
+
 if (loginForm) {
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -524,12 +543,7 @@ if (logoutBtn) {
     } catch (_) {
       // ignore — we still clear local state
     }
-    setToken('');
-    app.user = null;
-    app.workspaces = [];
-    app.activeWorkspaceId = null;
-    localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
-    updateAuthView();
+    resetAuthState();
     showAuthMessage('Anda telah keluar. Sampai jumpa kembali!');
     if (loginForm) {
       loginForm.reset();
@@ -1720,7 +1734,7 @@ if (dom.form) {
 
 function handleAction(action, payload) {
   const workspace = activeWorkspace();
-  if (!workspace && !['open-search', 'close-modal', 'open-profile'].includes(action)) {
+  if ((!app.user || !workspace) && !['open-search', 'close-modal', 'open-profile'].includes(action)) {
     return;
   }
   switch (action) {
