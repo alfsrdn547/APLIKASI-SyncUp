@@ -184,12 +184,8 @@ function getToken() {
 }
 
 function setToken(token) {
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
-    app.sessionExpired = false; // fresh token = fresh session
-  } else {
-    localStorage.removeItem(TOKEN_KEY);
-  }
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
 }
 
 async function apiRequest(method, path, body, options = {}) {
@@ -232,7 +228,7 @@ async function apiRequest(method, path, body, options = {}) {
 const api = {
   register: (payload) => apiRequest('POST', '/api/auth/register', payload, { skipAuth: true }),
   login: (payload) => apiRequest('POST', '/api/auth/login', payload, { skipAuth: true }),
-  logout: () => apiRequest('POST', '/api/auth/logout', undefined),
+  logout: () => apiRequest('POST', '/api/auth/logout', undefined, { skipAuth: true }),
   workspace: () => apiRequest('GET', '/api/workspace'),
   saveWorkspace: (workspace) => apiRequest('POST', '/api/workspace/save', workspace),
   updateWorkspace: (id, patch) => apiRequest('PATCH', `/api/workspaces/${id}`, patch),
@@ -258,7 +254,6 @@ const app = {
   timer: { taskId: null, startedAt: null }, // in-memory time tracker state
   isDirty: false, // pending changes not yet persisted
   saveDebounced: null,
-  sessionExpired: false, // guards concurrent 401 handling
 };
 
 // Per-user read-states (e.g. notification read markers, comment read markers).
@@ -349,8 +344,8 @@ async function loadInitial() {
     const data = await api.workspace();
     applyServerData(data);
   } catch (error) {
-    // 401 already handled by the interceptor; any other error just clears local state
-    resetAuthState();
+    // 401 already handled by the interceptor (reset + redirect). Network/server
+    // errors keep the token so a reload can retry without re-login.
   }
 }
 
@@ -452,10 +447,8 @@ function resetAuthState() {
 }
 
 function handleSessionExpired() {
-  if (app.sessionExpired) return; // idempotent for concurrent 401s
-  app.sessionExpired = true;
+  // Effects are idempotent; concurrent 401s just re-run the reset + navigation.
   resetAuthState();
-  showAuthMessage('Sesi berakhir. Silakan login ulang.', true);
   window.location.href = 'index.html';
 }
 
